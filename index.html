@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cartografía Social y Territorial de la Protesta en Bogotá (1909–2021)</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet.js CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <!-- Tipografías Editoriales: Fraunces (Serif) e Inter (Sans-serif) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['Fraunces', 'Georgia', 'serif'],
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            papel: '#FAF9F6',
+            papelAlt: '#F2EFE9',
+            bordeEditorial: '#E2DDD5',
+            tinta: '#1C1917',
+            tintaSuave: '#57534E',
+            rojoResistencia: '#B91C1C',
+            azulCivico: '#1E3A8A',
+            purpuraAsamblea: '#6D28D9',
+            verdeNorte: '#047857',
+            ambarSur: '#B45309'
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background-color: #FAF9F6;
+      color: #1C1917;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+    }
+
+    /* Contenedor del mapa Esri World Street Map */
+    #map {
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      background-color: #E8E5DF;
+    }
+
+    /* Controles de Zoom Leaflet con estética editorial clara */
+    .leaflet-control-zoom {
+      border: 1px solid #D6D3CD !important;
+      border-radius: 10px !important;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(28, 25, 23, 0.14) !important;
+    }
+    .leaflet-control-zoom a {
+      background-color: #FAF9F6 !important;
+      color: #1C1917 !important;
+      border-bottom: 1px solid #E2DDD5 !important;
+      font-weight: 600 !important;
+    }
+    .leaflet-control-zoom a:hover {
+      background-color: #1E3A8A !important;
+      color: #FFFFFF !important;
+    }
+
+    .leaflet-control-attribution {
+      background: rgba(250, 249, 246, 0.9) !important;
+      color: #57534E !important;
+      font-size: 10px !important;
+      border-top-left-radius: 6px;
+      padding: 2px 6px !important;
+    }
+
+    /* Marcadores circulares de alto contraste sobre Esri Street */
+    .node-marker-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .node-circle {
+      border-radius: 9999px;
+      border: 3px solid #FFFFFF;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(28, 25, 23, 0.25);
+      transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .node-marker-wrapper:hover .node-circle,
+    .node-marker-wrapper.is-selected .node-circle {
+      transform: scale(1.26);
+      box-shadow: 0 0 0 4px rgba(185, 28, 28, 0.28), 0 6px 16px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Etiqueta permanente legible sobre el mapa vial */
+    .node-permanent-label {
+      background: rgba(250, 249, 246, 0.96) !important;
+      color: #1C1917 !important;
+      border: 1.5px solid #1C1917 !important;
+      border-radius: 6px !important;
+      padding: 2px 7px !important;
+      font-family: 'Inter', sans-serif !important;
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      line-height: 1.2 !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22) !important;
+      white-space: nowrap !important;
+      pointer-events: auto !important;
+    }
+    .node-permanent-label::before {
+      display: none !important;
+    }
+
+    /* Popup editorial de 3 capas sobre el mapa */
+    .leaflet-popup-content-wrapper {
+      background-color: #FAF9F6 !important;
+      color: #1C1917 !important;
+      border: 1px solid #D6D3CD !important;
+      border-radius: 14px !important;
+      box-shadow: 0 14px 32px rgba(28, 25, 23, 0.24) !important;
+      padding: 0 !important;
+    }
+    .leaflet-popup-content {
+      margin: 0 !important;
+      width: 310px !important;
+      max-width: 82vw !important;
+    }
+    .leaflet-popup-tip {
+      background-color: #FAF9F6 !important;
+      border: 1px solid #D6D3CD !important;
+    }
+    .leaflet-popup-close-button {
+      color: #57534E !important;
+      font-size: 18px !important;
+      padding: 8px 10px 0 0 !important;
+    }
+    .leaflet-popup-close-button:hover {
+      color: #B91C1C !important;
+    }
+
+    /* Tooltip de líneas de flujo */
+    .flow-tooltip {
+      background-color: #1C1917 !important;
+      color: #FAF9F6 !important;
+      border: none !important;
+      border-radius: 6px !important;
+      font-size: 11px !important;
+      font-weight: 500 !important;
+      padding: 4px 9px !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+    }
+
+    /* Scrollbar discreto */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #F2EFE9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #C7C2B8;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #B91C1C;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col lg:flex-row bg-papel text-tinta">
+
+  <!-- BOTÓN FLOTANTE MÓVIL PARA ABRIR/COLAPSAR EL PANEL EDITORIAL -->
+  <button
+    id="mobileDrawerToggle"
+    onclick="toggleSidebarMobile()"
+    class="lg:hidden fixed top-3 left-3 z-[1000] flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-papel border border-bordeEditorial shadow-lg text-xs font-bold text-tinta hover:bg-papelAlt transition cursor-pointer"
+    aria-label="Alternar panel editorial"
+  >
+    <svg id="iconOpenSidebar" class="w-4 h-4 text-rojoResistencia hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 6h16M4 12h16M4 18h12" />
+    </svg>
+    <svg id="iconCloseSidebar" class="w-4 h-4 text-rojoResistencia" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+    </svg>
+    <span id="mobileDrawerLabel">Ver Mapa Vial</span>
+  </button>
+
+  <!-- PANEL LATERAL IZQUIERDO EDITORIAL (400px en escritorio, colapsable en móvil) -->
+  <aside
+    id="editorialSidebar"
+    class="fixed inset-0 z-[900] lg:static lg:z-20 w-full lg:w-[400px] lg:min-w-[400px] lg:max-w-[400px] h-full bg-papel border-r border-bordeEditorial flex flex-col shadow-xl transition-transform duration-300 ease-in-out translate-x-0"
+  >
+    <!-- Cabecera Periodística -->
+    <header class="px-5 pt-14 lg:pt-5 pb-4 border-b border-bordeEditorial bg-papel shrink-0">
+      <div class="flex items-center justify-between gap-2 mb-1.5">
+        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-rojoResistencia">
+          <span class="w-2 h-2 rounded-full bg-rojoResistencia"></span>
+          Elemento 5 · Crónica Multimedia
+        </span>
+        <button
+          onclick="toggleModalDossier()"
+          class="text-[11px] font-semibold text-azulCivico hover:underline cursor-pointer"
+        >
+          Marco Metodológico
+        </button>
+      </div>
+      <h1 class="font-serif text-xl font-bold text-tinta leading-snug">
+        Cartografía Social y Territorial de la Protesta en Bogotá (1909–2021)
+      </h1>
+      <p class="text-xs text-tintaSuave mt-1 leading-relaxed">
+        De la centralidad institucional hacia la geografía comunitaria del cuidado y la soberanía popular.
+      </p>
+    </header>
+
+    <!-- Contenedor Desplazable de Controles, Lista y Ficha Detallada -->
+    <div id="sidebarScrollArea" class="flex-1 overflow-y-auto divide-y divide-bordeEditorial">
+
+      <!-- SECCIÓN 1: FILTRO POR EJE TERRITORIAL (5 EJES DE LA FIGURA 2) -->
+      <section class="p-4 bg-papel">
+        <div class="flex items-center justify-between mb-2.5">
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-tintaSuave">
+            1. Eje Territorial (Figura 2)
+          </h2>
+          <span id="visibleCountBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-papelAlt text-tinta border border-bordeEditorial">
+            9 de 9 nodos
+          </span>
+        </div>
+        <div id="axisFiltersContainer" class="flex flex-wrap gap-1.5">
+          <!-- Renderizado dinámico por JS -->
+        </div>
+      </section>
+
+      <!-- SECCIÓN 2: FILTRO POR HITO CRONOLÓGICO (BOTONES CLICABLES) -->
+      <section class="p-4 bg-papelAlt/60">
+        <div class="flex items-center justify-between mb-2.5">
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-tintaSuave">
+            2. Hito Cronológico (1909–2021)
+          </h2>
+          <button
+            onclick="resetAllFilters()"
+            class="text-[11px] font-semibold text-rojoResistencia hover:underline cursor-pointer"
+          >
+            Limpiar filtros
+          </button>
+        </div>
+        <div id="yearFiltersContainer" class="flex flex-wrap gap-1.5">
+          <!-- Renderizado dinámico por JS -->
+        </div>
+      </section>
+
+      <!-- SECCIÓN 3: LISTA NAVEGABLE DE NODOS O FICHA DETALLADA DE 3 CAPAS -->
+      <section id="nodesSection" class="p-4 bg-papel">
+        <!-- Cabecera dinámica de sección -->
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <h2 id="nodesSectionTitle" class="text-[11px] font-bold uppercase tracking-wider text-tintaSuave">
+            3. Nodos Geolocalizados en Bogotá
+          </h2>
+          <div class="flex items-center gap-1">
+            <button
+              onclick="stepNode(-1)"
+              class="px-2 py-1 rounded-lg bg-papelAlt hover:bg-azulCivico hover:text-white border border-bordeEditorial text-[11px] font-semibold text-tinta transition cursor-pointer"
+              title="Nodo anterior"
+            >
+              ← Ant.
+            </button>
+            <button
+              onclick="stepNode(1)"
+              class="px-2 py-1 rounded-lg bg-papelAlt hover:bg-azulCivico hover:text-white border border-bordeEditorial text-[11px] font-semibold text-tinta transition cursor-pointer"
+              title="Siguiente nodo"
+            >
+              Sig. →
+            </button>
+          </div>
+        </div>
+
+        <!-- Panel de Detalle del Nodo Seleccionado (3 Capas Obligatorias) -->
+        <div id="selectedNodeDetailContainer" class="mb-4">
+          <!-- Se renderiza aquí cuando hay un nodo seleccionado -->
+        </div>
+
+        <!-- Lista navegable de los nodos filtrados -->
+        <div id="nodesListContainer" class="space-y-2">
+          <!-- Renderizado dinámico por JS -->
+        </div>
+      </section>
+    </div>
+  </aside>
+
+  <!-- ÁREA DEL MAPA VIAL DETALLADO (ESRI WORLD STREET MAP) -->
+  <main class="relative flex-1 h-full w-full">
+    <div id="map"></div>
+
+    <!-- CONTROLES FLOTANTES SOBRE EL MAPA (ESQUINA SUPERIOR DERECHA) -->
+    <div class="absolute top-3 right-3 z-[800] flex flex-col sm:flex-row items-end sm:items-center gap-2 max-w-[calc(100vw-150px)] sm:max-w-none">
+      <!-- Interruptor Checkbox: Líneas de flujo y descentralización territorial -->
+      <label
+        for="toggleFlowLinesCheckbox"
+        class="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-papel/95 backdrop-blur-sm border border-bordeEditorial shadow-md cursor-pointer select-none hover:bg-papel transition"
+      >
+        <input
+          type="checkbox"
+          id="toggleFlowLinesCheckbox"
+          checked
+          onchange="toggleFlowLines(this.checked)"
+          class="w-4 h-4 accent-rojoResistencia rounded cursor-pointer"
+        />
+        <span class="text-xs font-semibold text-tinta leading-tight">
+          Líneas de flujo y descentralización territorial (Figura 2)
+        </span>
+      </label>
+
+      <!-- Botón flotante: Centrar vista en Bogotá -->
+      <button
+        onclick="centerBogotaView()"
+        class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-azulCivico hover:bg-blue-900 text-white text-xs font-semibold shadow-md transition cursor-pointer shrink-0"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span>Centrar vista en Bogotá</span>
+      </button>
+    </div>
+
+    <!-- LEYENDA COMPACTA FLOTANTE (ESQUINA INFERIOR IZQUIERDA DEL MAPA) -->
+    <div class="hidden sm:block absolute bottom-5 left-4 z-[800] bg-papel/95 backdrop-blur-sm border border-bordeEditorial rounded-xl p-3 shadow-lg max-w-xs">
+      <p class="text-[10px] font-bold uppercase tracking-wider text-tintaSuave mb-2">
+        Convenciones Cartográficas (Figura 2)
+      </p>
+      <div class="space-y-1.5 text-[11px] text-tinta">
+        <div class="flex items-center gap-2">
+          <span class="w-6 border-t-[3px] border-solid border-azulCivico shrink-0"></span>
+          <span>Corredor histórico y flujos convergentes al centro</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-6 border-t-[3px] border-dashed border-rojoResistencia shrink-0"></span>
+          <span>Descentralización hacia periferias y cuidado mutuo</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL INFORMATIVO DEL DOSSIER (YO SITUADO Y NO-REDUNDANCIA) -->
+  <div id="modalDossier" class="fixed inset-0 z-[1100] hidden items-center justify-center bg-tinta/60 backdrop-blur-xs p-4">
+    <div class="bg-papel border border-bordeEditorial rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[88vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3 border-b border-bordeEditorial pb-3">
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-widest text-rojoResistencia">
+            Narrativas Contemporáneas · Crónica Multimedia
+          </span>
+          <h2 class="font-serif text-xl font-bold text-tinta mt-0.5">
+            El «Yo» Situado y la Cartografía del Cuidado
+          </h2>
+        </div>
+        <button
+          onclick="toggleModalDossier()"
+          class="p-1.5 rounded-lg bg-papelAlt hover:bg-rojoResistencia hover:text-white text-tinta transition cursor-pointer"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="space-y-2.5 text-xs sm:text-sm text-tinta leading-relaxed">
+        <p>
+          Frente al encuadre mediático hegemónico y la criminalización punitiva (<em>Derecho Penal del Enemigo</em> y Ley 2197 de 2022), este mapa interactivo cumple la <strong>regla de no-redundancia</strong> (Sección 6.5 del dossier): aporta la dimensión espacial, histórica y documental de la movilización en Bogotá.
+        </p>
+        <p>
+          La cartografía evidencia la transición histórica desde el eje institucional central (<strong>Parque Nacional – Carrera 7ª – Plaza de Bolívar</strong>) hacia la ocupación barrial y comunitaria de las periferias en 2021 (<strong>Portal Resistencia</strong> y <strong>Puente de la Dignidad</strong>), donde la olla comunitaria, la huerta urbana y el artivismo sostuvieron la vida colectiva.
+        </p>
+      </div>
+      <div class="flex justify-end pt-2">
+        <button
+          onclick="toggleModalDossier()"
+          class="px-4 py-2 rounded-xl bg-azulCivico hover:bg-blue-900 text-white text-xs font-semibold transition cursor-pointer"
+        >
+          Continuar explorando el mapa
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. CONFIGURACIÓN DE LOS 5 EJES TERRITORIALES (FIGURA 2 DEL DOSSIER)
+    // =========================================================================
+    const EJES = [
+      {
+        id: 'todos',
+        nombre: 'Todos los ejes',
+        color: '#1C1917',
+        pillActive: 'bg-tinta text-papel border-tinta',
+        pillInactive: 'bg-papelAlt text-tinta border-bordeEditorial hover:border-tinta'
+      },
+      {
+        id: 'institucional',
+        nombre: 'Eje Institucional Histórico',
+        color: '#1E3A8A',
+        pillActive: 'bg-[#1E3A8A] text-white border-[#1E3A8A]',
+        pillInactive: 'bg-blue-50/80 text-[#1E3A8A] border-blue-200 hover:border-[#1E3A8A]'
+      },
+      {
+        id: 'universitario',
+        nombre: 'Eje Universitario / Asambleario',
+        color: '#6D28D9',
+        pillActive: 'bg-[#6D28D9] text-white border-[#6D28D9]',
+        pillInactive: 'bg-purple-50/80 text-[#6D28D9] border-purple-200 hover:border-[#6D28D9]'
+      },
+      {
+        id: 'norte',
+        nombre: 'Eje Norte Cultural',
+        color: '#047857',
+        pillActive: 'bg-[#047857] text-white border-[#047857]',
+        pillInactive: 'bg-emerald-50/80 text-[#047857] border-emerald-200 hover:border-[#047857]'
+      },
+      {
+        id: 'suroccidente',
+        nombre: 'Eje Suroccidente Popular',
+        color: '#B91C1C',
+        pillActive: 'bg-[#B91C1C] text-white border-[#B91C1C]',
+        pillInactive: 'bg-red-50/80 text-[#B91C1C] border-red-200 hover:border-[#B91C1C]'
+      },
+      {
+        id: 'sur',
+        nombre: 'Eje Sur Campesino',
+        color: '#B45309',
+        pillActive: 'bg-[#B45309] text-white border-[#B45309]',
+        pillInactive: 'bg-amber-50/80 text-[#B45309] border-amber-200 hover:border-[#B45309]'
+      }
+    ];
+
+    // =========================================================================
+    // 2. HITOS CRONOLÓGICOS EXACTOS (1909 – 2021)
+    // =========================================================================
+    const HITOS_CRONOLOGICOS = [
+      { id: 'todos', etiqueta: 'Todos' },
+      { id: '1909', etiqueta: '1909 (Caída de Reyes)' },
+      { id: '1929', etiqueta: '1929 (Estudiante Caído)' },
+      { id: '1948', etiqueta: '1948 (Marcha del Silencio)' },
+      { id: '1954', etiqueta: '1954 (Masacre Estudiantil)' },
+      { id: '1977', etiqueta: '1977 (Paro Cívico)' },
+      { id: '2019', etiqueta: '2019 (El 21N y Dilan Cruz)' },
+      { id: '2020', etiqueta: '2020 (Masacre del 9S)' },
+      { id: '2021', etiqueta: '2021 (Estallido Social 28A)' }
+    ];
+
+    // =========================================================================
+    // 3. LOS 9 NODOS GEOLOCALIZADOS EN BOGOTÁ (3 CAPAS OBLIGATORIAS)
+    // =========================================================================
+    const NODOS = [
+      {
+        id: 'plaza-bolivar',
+        nombre: 'Plaza de Bolívar',
+        etiquetaCorta: 'Plaza de Bolívar',
+        coords: [4.5981, -74.0760],
+        eje: 'institucional',
+        anios: ['1909', '1948', '1977', '2019', '2021'],
+        capa1: 'Centro del poder político y sindical. Escenario de la caída de Rafael Reyes (13/03/1909), la Marcha del Silencio liderada por Jorge Eliécer Gaitán con más de 100.000 manifestantes con antorchas (07/02/1948), convergencia del Paro Cívico Nacional (14/09/1977), las jornadas del 21N (2019) y el Estallido Social (28A de 2021).',
+        capa2: 'Cabildos abiertos ciudadanos, artivismo (batucadas, comparsas, clown y muralismo colectivo como «La memoria no se borra» y «Prohibido rendirse») y espacios de sanación colectiva que rompen el aislamiento individual.',
+        capa3: [
+          {
+            titulo: 'Hernán Díaz / Banrepcultural – Protesta en la Plaza de Bolívar',
+            url: 'https://babel.banrepcultural.org/digital/collection/hernan-diaz/id/469/'
+          },
+          {
+            titulo: 'CNMH (2024) – El pueblo en las calles',
+            url: 'https://centrodememoriahistorica.gov.co/wp-content/uploads/2024/11/ElPuebloEnLasCalles.pdf'
+          }
+        ]
+      },
+      {
+        id: 'carrera-septima-cl13',
+        nombre: 'Carrera Séptima con Calle 13 / Eje Ambiental',
+        etiquetaCorta: 'Cra. 7ª con Cl. 13',
+        coords: [4.6012, -74.0736],
+        eje: 'institucional',
+        anios: ['1929', '1954', '2019'],
+        capa1: 'Corredor histórico de movilización estudiantil. Escenario del asesinato de Gonzalo Bravo Pérez (06-09/06/1929), de la Masacre Estudiantil perpetrada por el Batallón Colombia contra estudiantes de la UNAL (09/06/1954, con 11 asesinados y más de 40 heridos) y de la herida mortal al bachiller Dilan Cruz por escopeta calibre 12 del ESMAD (23/11/2019), que dio origen a la sentencia STC 7641/20 de la Corte Suprema.',
+        capa2: 'Altares populares de memoria viva, velatones, brigadas de primeros auxilios y veeduría ciudadana de derechos humanos frente a la doctrina del enemigo interno y la criminalización punitiva.',
+        capa3: [
+          {
+            titulo: 'Educapaz (2023) – Voces del Estallido Social 2021',
+            url: 'https://educapaz.co/wp-content/uploads/2023/12/Voces-del-estallido-social-2021-Small-1.pdf'
+          },
+          {
+            titulo: 'Valderrama Ibargüen (2019) – Criminalización de la protesta',
+            url: 'https://repository.unilibre.edu.co/items/0302b49c-4d7e-480e-a6ae-ef6c72d2daae'
+          }
+        ]
+      },
+      {
+        id: 'parque-nacional',
+        nombre: 'Parque Nacional Enrique Olaya Herrera',
+        etiquetaCorta: 'Parque Nacional',
+        coords: [4.6236, -74.0653],
+        eje: 'institucional',
+        anios: ['1977', '2019', '2021'],
+        capa1: 'Punto histórico de partida de las marchas sindicales, obreras e indígenas (minga y pueblo Misak) hacia la Plaza de Bolívar por la Carrera 7ª en el Paro Cívico de 1977, el 21N de 2019 y el Estallido Social de 2021.',
+        capa2: 'Mingas de pensamiento, círculos de palabra intergeneracionales, cocina comunitaria y pedagogía popular que desmienten el encuadre mediático estigmatizante y visibilizan las demandas estructurales.',
+        capa3: [
+          {
+            titulo: 'Bringel, B. (2021) – Desbordes, Fundación Rosa Luxemburg',
+            url: 'https://www.rosalux.org.ec/pdfs/desbordes-estallidos-sujetos-y-porvenires-en-america-latina.pdf'
+          },
+          {
+            titulo: 'Pinilla Escobar (2025) – Cobertura mediática de la protesta, Revista Chasqui',
+            url: 'https://dialnet.unirioja.es/descarga/articulo/10190781.pdf'
+          }
+        ]
+      },
+      {
+        id: 'universidad-nacional',
+        nombre: 'Universidad Nacional de Colombia – Plaza Che (Cl. 26 / Cra. 30)',
+        etiquetaCorta: 'U. Nacional (Plaza Che)',
+        coords: [4.6356, -74.0828],
+        eje: 'universitario',
+        anios: ['1909', '1929', '1954', '2019', '2021'],
+        capa1: 'Epicentro de la resistencia estudiantil desde 1909, 1929 y el asesinato de Uriel Gutiérrez (08/06/1954) hasta el 21N y el 28A. Documentado también por la investigación judicial sobre el agente encubierto infiltrado alias «Rojo» (Fiscalía/Policía), quien suministró explosivos para fabricar montajes mediáticos.',
+        capa2: 'Asambleas permanentes multiestamentarias, comedores solidarios, bibliotecas populares, redes de cuidado colectivo y verificación documental frente a la infiltración y el entrampamiento estatal.',
+        capa3: [
+          {
+            titulo: 'Revista Raya (2024) – El agente de la Fiscalía que provocó actos violentos en la UNAL',
+            url: 'https://www.youtube.com/watch?v=vRlkuFplBm8'
+          },
+          {
+            titulo: 'Comisión de la Verdad [CEV] (2022) – Diez propuestas para el estudio de la historia reciente',
+            url: 'https://www.comisiondelaverdad.co/sites/default/files/2022-06/13.%20DIEZ%20PROPUESTAS%20PARA%20EL%20ESTUDIO%20DE%20LA%20HISTORIA%20RECIENTE%20DE%20COLOMBIA%20CON%20%C3%89NFASIS%20EN%20EL%20CONFLICTO%20ARMADO.pdf'
+          }
+        ]
+      },
+      {
+        id: 'monumento-heroes',
+        nombre: 'Monumento a los Héroes (Calle 80 con Autopista Norte)',
+        etiquetaCorta: 'Monumento a los Héroes',
+        coords: [4.6682, -74.0601],
+        eje: 'norte',
+        anios: ['2019', '2021'],
+        capa1: 'Nodo emblemático de concentración juvenil y cacerolazos masivos durante el 21N (2019) y el Estallido Social (2021), resignificado por la ciudadanía como espacio vivo de memoria y expresión artística.',
+        capa2: 'Epicentro de artivismo en el norte de la ciudad: conciertos autogestionados, comparsas, batucadas, muralismo colectivo y sanación comunitaria mediante el ritmo y la creación estética.',
+        capa3: [
+          {
+            titulo: 'Educapaz (2023) – Voces del Estallido Social 2021',
+            url: 'https://educapaz.co/wp-content/uploads/2023/12/Voces-del-estallido-social-2021-Small-1.pdf'
+          },
+          {
+            titulo: 'CNMH (2024) – El pueblo en las calles',
+            url: 'https://centrodememoriahistorica.gov.co/wp-content/uploads/2024/11/ElPuebloEnLasCalles.pdf'
+          }
+        ]
+      },
+      {
+        id: 'parque-verbenal',
+        nombre: 'Parque Verbenal (Localidad de Usaquén)',
+        etiquetaCorta: 'Parque Verbenal',
+        coords: [4.7654, -74.0365],
+        eje: 'norte',
+        anios: ['2020', '2021'],
+        capa1: 'Punto focal de la indignación popular en el extremo norte de Bogotá durante la Masacre del 9S (09-10/09/2020) tras el homicidio de Javier Ordóñez, y nodo de articulación cultural y barrial en el Estallido Social de 2021.',
+        capa2: 'Asambleas barriales, jornadas de memoria comunitaria, música, teatro callejero y redes solidarias juveniles en los barrios populares del norte.',
+        capa3: [
+          {
+            titulo: 'CNMH (2024) – El pueblo en las calles',
+            url: 'https://centrodememoriahistorica.gov.co/wp-content/uploads/2024/11/ElPuebloEnLasCalles.pdf'
+          }
+        ]
+      },
+      {
+        id: 'cai-villa-luz',
+        nombre: 'CAI Villa Luz (Localidad de Engativá)',
+        etiquetaCorta: 'CAI Villa Luz',
+        coords: [4.6815, -74.1128],
+        eje: 'suroccidente',
+        anios: ['2020'],
+        capa1: 'Epicentro de la Masacre del 9S (09-10/09/2020) desencadenada tras la tortura y homicidio de Javier Ordóñez dentro del CAI, que provocó protestas masivas y dejó un saldo de 14 personas asesinadas por armas de fuego policiales en Bogotá y Soacha (informe Carlos Negret).',
+        capa2: 'Velatones comunitarias, murales de memoria contra la impunidad, acompañamiento psicosocial a familias víctimas y organización vecinal por los derechos humanos.',
+        capa3: [
+          {
+            titulo: 'CNMH (2024) – El pueblo en las calles',
+            url: 'https://centrodememoriahistorica.gov.co/wp-content/uploads/2024/11/ElPuebloEnLasCalles.pdf'
+          },
+          {
+            titulo: 'Valderrama Ibargüen (2019) – Derecho penal del enemigo',
+            url: 'https://repository.unilibre.edu.co/items/0302b49c-4d7e-480e-a6ae-ef6c72d2daae'
+          }
+        ]
+      },
+      {
+        id: 'portal-resistencia',
+        nombre: 'Portal Resistencia (Localidad de Kennedy)',
+        etiquetaCorta: 'Portal Resistencia',
+        coords: [4.6295, -74.1731],
+        eje: 'suroccidente',
+        anios: ['2021'],
+        capa1: 'Símbolo central de la descentralización territorial de la protesta hacia las periferias populares a partir del 28 de abril de 2021, consolidando un punto permanente de asamblea y resistencia juvenil en el suroccidente.',
+        capa2: 'Espacio humanitario «Al Calor de la Olla», sostenido por madres de familia, jóvenes de primera línea y comerciantes de Corabastos que donaron víveres. Sirvió más de 1.500 raciones diarias, garantizando soberanía alimentaria para jóvenes que en sus hogares solo hacían una comida al día, junto con biblioteca popular y brigadas de salud.',
+        capa3: [
+          {
+            titulo: 'CNMH (2024) – El pueblo en las calles',
+            url: 'https://centrodememoriahistorica.gov.co/wp-content/uploads/2024/11/ElPuebloEnLasCalles.pdf'
+          },
+          {
+            titulo: 'Gómez Aguas et al. (2023) – Criminalización de la protesta social en la Ley 2197',
+            url: 'https://dialnet.unirioja.es/descarga/articulo/9611158.pdf'
+          }
+        ]
+      },
+      {
+        id: 'puente-dignidad',
+        nombre: 'Puente de la Dignidad (Localidad de Usme)',
+        etiquetaCorta: 'Puente de la Dignidad',
+        coords: [4.5133, -74.1165],
+        eje: 'sur',
+        anios: ['1977', '2021'],
+        capa1: 'Nodo estratégico de movilización popular en el sur de Bogotá durante el Paro Cívico de 1977 y epicentro de resistencia comunitaria y campesina en el Estallido Social de 2021, enlazando la periferia urbana con la ruralidad de Sumapaz.',
+        capa2: 'Articulación del colectivo Hijxs de Usminia, campesinos del páramo de Sumapaz, cabildos indígenas Monifue Uruk y mujeres cuidadoras. Sancocho comunitario permanente, huerta urbana comunitaria contigua y punto de atención médica de «la Doc», rearticulando la identidad barrial con la ruralidad del sur.',
+        capa3: [
+          {
+            titulo: 'Educapaz (2023) – Voces del Estallido Social 2021',
+            url: 'https://educapaz.co/wp-content/uploads/2023/12/Voces-del-estallido-social-2021-Small-1.pdf'
+          },
+          {
+            titulo: 'Bringel, B. (2021) – Desbordes, Fundación Rosa Luxemburg',
+            url: 'https://www.rosalux.org.ec/pdfs/desbordes-estallidos-sujetos-y-porvenires-en-america-latina.pdf'
+          }
+        ]
+      }
+    ];
+
+    // =========================================================================
+    // 4. INICIALIZACIÓN ÚNICA DE LEAFLET CON ESRI WORLD STREET MAP
+    // =========================================================================
+    const BOGOTA_CENTER = [4.635, -74.095];
+    const BOGOTA_ZOOM = 11;
+
+    const map = L.map('map', {
+      center: BOGOTA_CENTER,
+      zoom: BOGOTA_ZOOM,
+      zoomControl: true
+    });
+
+    // ÚNICA CAPA BASE PERMITIDA: Esri World Street Map (máxima nitidez vial y cero marcas de agua)
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012',
+      maxZoom: 19
+    }).addTo(map);
+
+    const markersLayer = L.layerGroup().addTo(map);
+    const flowLinesLayer = L.layerGroup().addTo(map);
+
+    // =========================================================================
+    // 5. TRAZADO DE LÍNEAS DE FLUJO Y DESCENTRALIZACIÓN (FIGURA 2)
+    // =========================================================================
+    function buildFlowLines() {
+      flowLinesLayer.clearLayers();
+
+      // A. Líneas sólidas en azul cívico (#1E3A8A): Corredor histórico central y flujos convergentes
+      // 1) Parque Nacional -> Carrera Séptima / Cl. 13 -> Plaza de Bolívar
+      L.polyline([
+        [4.6236, -74.0653], // Parque Nacional
+        [4.6012, -74.0736], // Carrera Séptima con Calle 13
+        [4.5981, -74.0760]  // Plaza de Bolívar
+      ], {
+        color: '#1E3A8A',
+        weight: 4,
+        opacity: 0.85
+      }).bindTooltip('Eje Institucional Histórico: Parque Nacional → Cra. 7ª / Cl. 13 → Plaza de Bolívar', {
+        sticky: true,
+        className: 'flow-tooltip'
+      }).addTo(flowLinesLayer);
+
+      // 2) Flujo convergente desde Monumento a los Héroes hacia el eje central (Parque Nacional)
+      L.polyline([
+        [4.6682, -74.0601], // Monumento a los Héroes
+        [4.6236, -74.0653]  // Parque Nacional
+      ], {
+        color: '#1E3A8A',
+        weight: 3,
+        opacity: 0.78
+      }).bindTooltip('Flujo convergente Norte Cultural: Monumento a los Héroes → Eje Central', {
+        sticky: true,
+        className: 'flow-tooltip'
+      }).addTo(flowLinesLayer);
+
+      // 3) Flujo convergente desde Universidad Nacional hacia el eje central (Cra. 7ª / Plaza de Bolívar)
+      L.polyline([
+        [4.6356, -74.0828], // Universidad Nacional (Plaza Che)
+        [4.6012, -74.0736]  // Carrera Séptima / Cl. 13
+      ], {
+        color: '#1E3A8A',
+        weight: 3,
+        opacity: 0.78
+      }).bindTooltip('Flujo convergente Universitario: U. Nacional (Plaza Che) → Eje Central', {
+        sticky: true,
+        className: 'flow-tooltip'
+      }).addTo(flowLinesLayer);
+
+      // B. Líneas discontinuas en rojo resistencia (#B91C1C): Descentralización hacia periferias (2021)
+      // 1) Eje Central (Plaza de Bolívar) -> Portal Resistencia (Kennedy)
+      L.polyline([
+        [4.5981, -74.0760], // Plaza de Bolívar
+        [4.6295, -74.1731]  // Portal Resistencia (Kennedy)
+      ], {
+        color: '#B91C1C',
+        weight: 3.5,
+        opacity: 0.88,
+        dashArray: '8, 8'
+      }).bindTooltip('Descentralización 2021 → Eje Suroccidente Popular: Portal Resistencia (Kennedy)', {
+        sticky: true,
+        className: 'flow-tooltip'
+      }).addTo(flowLinesLayer);
+
+      // 2) Eje Central (Plaza de Bolívar) -> Puente de la Dignidad (Usme)
+      L.polyline([
+        [4.5981, -74.0760], // Plaza de Bolívar
+        [4.5133, -74.1165]  // Puente de la Dignidad (Usme)
+      ], {
+        color: '#B91C1C',
+        weight: 3.5,
+        opacity: 0.88,
+        dashArray: '8, 8'
+      }).bindTooltip('Descentralización 2021 → Eje Sur Campesino: Puente de la Dignidad (Usme)', {
+        sticky: true,
+        className: 'flow-tooltip'
+      }).addTo(flowLinesLayer);
+    }
+
+    buildFlowLines();
+
+    // =========================================================================
+    // 6. ESTADO DE FILTROS, SELECCIÓN Y RENDERIZADO DE INTERFAZ
+    // =========================================================================
+    let activeAxis = 'todos';
+    let activeYear = 'todos';
+    let selectedNodeId = 'portal-resistencia';
+    let filteredNodes = [...NODOS];
+    let markersMap = {};
+    let isMobileSidebarOpen = true;
+
+    function getAxisMeta(axisId) {
+      return EJES.find(e => e.id === axisId) || EJES[0];
+    }
+
+    // Renderizar botones de filtro por Eje Territorial con contadores
+    function renderAxisFilters() {
+      const container = document.getElementById('axisFiltersContainer');
+      container.innerHTML = '';
+
+      EJES.forEach(eje => {
+        const count = eje.id === 'todos'
+          ? NODOS.length
+          : NODOS.filter(n => n.eje === eje.id).length;
+
+        const isSelected = activeAxis === eje.id;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.onclick = () => {
+          activeAxis = eje.id;
+          applyFilters();
+        };
+
+        btn.className = `inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition cursor-pointer ${
+          isSelected ? eje.pillActive : eje.pillInactive
+        }`;
+
+        btn.innerHTML = `
+          <span class="w-2.5 h-2.5 rounded-full shrink-0 border border-white/60" style="background-color:${eje.color};"></span>
+          <span>${eje.nombre}</span>
+          <span class="px-1.5 py-0.2 rounded-full text-[10px] ${
+            isSelected ? 'bg-white/25 text-white' : 'bg-black/5 text-tinta'
+          }">${count}</span>
+        `;
+        container.appendChild(btn);
+      });
+    }
+
+    // Renderizar botones clicables de Hito Cronológico
+    function renderYearFilters() {
+      const container = document.getElementById('yearFiltersContainer');
+      container.innerHTML = '';
+
+      HITOS_CRONOLOGICOS.forEach(hito => {
+        const isSelected = activeYear === hito.id;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.onclick = () => {
+          activeYear = hito.id;
+          applyFilters();
+        };
+
+        btn.className = `px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition cursor-pointer ${
+          isSelected
+            ? 'bg-rojoResistencia text-white border-rojoResistencia shadow-xs'
+            : 'bg-papel text-tinta border-bordeEditorial hover:border-rojoResistencia hover:text-rojoResistencia'
+        }`;
+        btn.textContent = hito.etiqueta;
+        container.appendChild(btn);
+      });
+    }
+
+    // Construir HTML de las 3 capas para el Popup del Mapa
+    function buildPopupHtml(node) {
+      const ejeMeta = getAxisMeta(node.eje);
+      const linksHtml = node.capa3.map(link => `
+        <a
+          href="${link.url}"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-start justify-between gap-1.5 p-2 rounded-lg bg-papelAlt hover:bg-blue-50 border border-bordeEditorial hover:border-azulCivico text-[11px] font-semibold text-azulCivico transition"
+        >
+          <span class="leading-snug">${link.titulo}</span>
+          <span class="shrink-0 text-[10px]">↗</span>
+        </a>
+      `).join('');
+
+      return `
+        <div class="p-3.5 max-h-[340px] overflow-y-auto space-y-2.5 font-sans">
+          <div class="border-b border-bordeEditorial pb-2 pr-4">
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold text-white" style="background-color:${ejeMeta.color};">
+              ${ejeMeta.nombre}
+            </span>
+            <h3 class="font-serif text-base font-bold text-tinta mt-1 leading-snug">
+              ${node.nombre}
+            </h3>
+            <p class="text-[10px] font-semibold text-tintaSuave mt-0.5">
+              Hitos: ${node.anios.join(' · ')}
+            </p>
+          </div>
+
+          <div class="space-y-1">
+            <span class="inline-block text-[10px] font-bold uppercase tracking-wider text-azulCivico">
+              Capa 1 · Hito Histórico
+            </span>
+            <p class="text-[11.5px] text-tinta leading-relaxed">
+              ${node.capa1}
+            </p>
+          </div>
+
+          <div class="space-y-1 bg-red-50/70 border border-red-200/80 rounded-lg p-2.5">
+            <span class="inline-block text-[10px] font-bold uppercase tracking-wider text-rojoResistencia">
+              Capa 2 · Práctica Comunitaria de Cuidado
+            </span>
+            <p class="text-[11.5px] text-tinta leading-relaxed">
+              ${node.capa2}
+            </p>
+          </div>
+
+          <div class="space-y-1.5">
+            <span class="inline-block text-[10px] font-bold uppercase tracking-wider text-verdeNorte">
+              Capa 3 · Enlaces Documentales Directos
+            </span>
+            <div class="space-y-1.5">
+              ${linksHtml}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Renderizar marcadores circulares de alto contraste sobre Esri Street
+    function renderMarkers() {
+      markersLayer.clearLayers();
+      markersMap = {};
+
+      filteredNodes.forEach(node => {
+        const ejeMeta = getAxisMeta(node.eje);
+        const isSelected = node.id === selectedNodeId;
+        const size = isSelected ? 26 : 20;
+
+        const icon = L.divIcon({
+          className: '',
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+          html: `
+            <div class="node-marker-wrapper ${isSelected ? 'is-selected' : ''}" style="width:${size}px; height:${size}px;">
+              <div class="node-circle" style="width:${size}px; height:${size}px; background-color:${ejeMeta.color};">
+                <span style="width:6px; height:6px; border-radius:9999px; background:#FFFFFF;"></span>
+              </div>
+            </div>
+          `
+        });
+
+        const marker = L.marker(node.coords, { icon });
+
+        // Etiqueta permanente legible sobre las calles de Esri Street
+        marker.bindTooltip(node.etiquetaCorta, {
+          permanent: true,
+          direction: 'top',
+          offset: [0, -12],
+          className: 'node-permanent-label'
+        });
+
+        // Popup editorial en 3 capas
+        marker.bindPopup(buildPopupHtml(node), {
+          maxWidth: 320,
+          autoPan: true
+        });
+
+        marker.on('click', () => {
+          selectNode(node.id, { flyTo: false, openPopup: true, closeMobileDrawer: false });
+        });
+
+        marker.addTo(markersLayer);
+        markersMap[node.id] = marker;
+      });
+    }
+
+    // Renderizar ficha completa de 3 capas del nodo seleccionado en el panel lateral
+    function renderSelectedNodeDetail() {
+      const container = document.getElementById('selectedNodeDetailContainer');
+      const node = filteredNodes.find(n => n.id === selectedNodeId);
+
+      if (!node) {
+        container.innerHTML = '';
+        return;
+      }
+
+      const ejeMeta = getAxisMeta(node.eje);
+      const linksHtml = node.capa3.map(link => `
+        <a
+          href="${link.url}"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-start justify-between gap-2 p-2.5 rounded-xl bg-papel hover:bg-blue-50/80 border border-bordeEditorial hover:border-azulCivico text-xs font-semibold text-azulCivico transition group"
+        >
+          <span class="leading-snug group-hover:underline">${link.titulo}</span>
+          <svg class="w-4 h-4 shrink-0 mt-0.5 text-azulCivico" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        </a>
+      `).join('');
+
+      container.innerHTML = `
+        <article class="bg-papelAlt border-2 border-tinta/15 rounded-2xl p-4 shadow-xs space-y-3">
+          <div class="flex items-start justify-between gap-2 border-b border-bordeEditorial pb-2.5">
+            <div>
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white" style="background-color:${ejeMeta.color};">
+                ${ejeMeta.nombre}
+              </span>
+              <h3 class="font-serif text-lg font-bold text-tinta mt-1.5 leading-snug">
+                ${node.nombre}
+              </h3>
+              <p class="text-[11px] font-medium text-tintaSuave mt-0.5">
+                Hitos cronológicos: <strong class="text-tinta">${node.anios.join(' · ')}</strong>
+              </p>
+            </div>
+            <button
+              onclick="focusNodeOnMap('${node.id}')"
+              class="lg:hidden shrink-0 px-2.5 py-1.5 rounded-lg bg-azulCivico text-white text-[11px] font-semibold cursor-pointer"
+            >
+              Ver en mapa
+            </button>
+          </div>
+
+          <!-- Capa 1: Hito Histórico -->
+          <div class="bg-papel border border-bordeEditorial rounded-xl p-3 space-y-1">
+            <div class="flex items-center gap-1.5">
+              <span class="px-1.5 py-0.5 rounded bg-azulCivico text-white text-[10px] font-bold uppercase">Capa 1</span>
+              <h4 class="text-[11px] font-bold uppercase tracking-wider text-azulCivico">Hito Histórico</h4>
+            </div>
+            <p class="text-xs text-tinta leading-relaxed">
+              ${node.capa1}
+            </p>
+          </div>
+
+          <!-- Capa 2: Práctica Comunitaria de Cuidado -->
+          <div class="bg-red-50/60 border border-red-200 rounded-xl p-3 space-y-1">
+            <div class="flex items-center gap-1.5">
+              <span class="px-1.5 py-0.5 rounded bg-rojoResistencia text-white text-[10px] font-bold uppercase">Capa 2</span>
+              <h4 class="text-[11px] font-bold uppercase tracking-wider text-rojoResistencia">Práctica Comunitaria de Cuidado</h4>
+            </div>
+            <p class="text-xs text-tinta leading-relaxed">
+              ${node.capa2}
+            </p>
+          </div>
+
+          <!-- Capa 3: Enlaces Documentales Directos -->
+          <div class="bg-papel border border-bordeEditorial rounded-xl p-3 space-y-2">
+            <div class="flex items-center gap-1.5">
+              <span class="px-1.5 py-0.5 rounded bg-verdeNorte text-white text-[10px] font-bold uppercase">Capa 3</span>
+              <h4 class="text-[11px] font-bold uppercase tracking-wider text-verdeNorte">Enlaces Documentales Directos</h4>
+            </div>
+            <div class="space-y-1.5">
+              ${linksHtml}
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    // Renderizar lista navegable de los 9 nodos
+    function renderNodesList() {
+      const listContainer = document.getElementById('nodesListContainer');
+      const badge = document.getElementById('visibleCountBadge');
+      badge.textContent = `${filteredNodes.length} de ${NODOS.length} nodos`;
+
+      if (filteredNodes.length === 0) {
+        listContainer.innerHTML = `
+          <div class="p-4 rounded-xl bg-papelAlt border border-bordeEditorial text-center space-y-2">
+            <p class="font-serif text-sm font-bold text-tinta">Sin nodos para esta combinación</p>
+            <p class="text-xs text-tintaSuave">Prueba seleccionando otro año o restableciendo los filtros.</p>
+            <button
+              onclick="resetAllFilters()"
+              class="px-3 py-1.5 rounded-lg bg-rojoResistencia text-white text-xs font-semibold cursor-pointer"
+            >
+              Mostrar los 9 nodos
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      listContainer.innerHTML = filteredNodes.map((node, index) => {
+        const ejeMeta = getAxisMeta(node.eje);
+        const isSelected = node.id === selectedNodeId;
+        return `
+          <button
+            type="button"
+            onclick="selectNode('${node.id}', { flyTo: true, openPopup: true, closeMobileDrawer: false })"
+            class="w-full text-left p-3 rounded-xl border transition cursor-pointer flex items-start justify-between gap-2.5 ${
+              isSelected
+                ? 'bg-blue-50/70 border-azulCivico shadow-xs'
+                : 'bg-papel hover:bg-papelAlt border-bordeEditorial'
+            }"
+          >
+            <div class="space-y-1">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color:${ejeMeta.color};"></span>
+                <span class="text-[10px] font-bold uppercase tracking-wide" style="color:${ejeMeta.color};">
+                  ${ejeMeta.nombre}
+                </span>
+              </div>
+              <p class="font-serif text-sm font-bold text-tinta leading-snug">
+                ${index + 1}. ${node.nombre}
+              </p>
+              <p class="text-[11px] text-tintaSuave">
+                Años: ${node.anios.join(', ')}
+              </p>
+            </div>
+            <span class="text-xs font-bold text-azulCivico shrink-0 mt-1">→</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    // =========================================================================
+    // 7. CONTROLADORES DE INTERACCIÓN Y NAVEGACIÓN
+    // =========================================================================
+    function selectNode(nodeId, options = { flyTo: true, openPopup: true, closeMobileDrawer: false }) {
+      const node = filteredNodes.find(n => n.id === nodeId);
+      if (!node) return;
+
+      selectedNodeId = nodeId;
+      renderMarkers();
+      renderSelectedNodeDetail();
+      renderNodesList();
+
+      const scrollArea = document.getElementById('sidebarScrollArea');
+      const detailEl = document.getElementById('selectedNodeDetailContainer');
+      if (scrollArea && detailEl) {
+        detailEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      if (options.closeMobileDrawer && window.innerWidth < 1024 && isMobileSidebarOpen) {
+        toggleSidebarMobile(false);
+      }
+
+      if (options.flyTo) {
+        map.flyTo(node.coords, 14, { duration: 1 });
+      }
+
+      if (options.openPopup && markersMap[nodeId]) {
+        markersMap[nodeId].openPopup();
+      }
+    }
+
+    function focusNodeOnMap(nodeId) {
+      if (window.innerWidth < 1024 && isMobileSidebarOpen) {
+        toggleSidebarMobile(false);
+      }
+      const node = filteredNodes.find(n => n.id === nodeId);
+      if (!node) return;
+      map.flyTo(node.coords, 15, { duration: 0.9 });
+      setTimeout(() => {
+        if (markersMap[nodeId]) markersMap[nodeId].openPopup();
+      }, 350);
+    }
+
+    function stepNode(delta) {
+      if (filteredNodes.length === 0) return;
+      const idx = filteredNodes.findIndex(n => n.id === selectedNodeId);
+      let nextIdx = idx === -1 ? 0 : idx + delta;
+      if (nextIdx >= filteredNodes.length) nextIdx = 0;
+      if (nextIdx < 0) nextIdx = filteredNodes.length - 1;
+      selectNode(filteredNodes[nextIdx].id, { flyTo: true, openPopup: true, closeMobileDrawer: false });
+    }
+
+    function applyFilters() {
+      filteredNodes = NODOS.filter(node => {
+        const matchesAxis = activeAxis === 'todos' || node.eje === activeAxis;
+        const matchesYear = activeYear === 'todos' || node.anios.includes(activeYear);
+        return matchesAxis && matchesYear;
+      });
+
+      if (filteredNodes.length > 0 && !filteredNodes.some(n => n.id === selectedNodeId)) {
+        selectedNodeId = filteredNodes[0].id;
+      } else if (filteredNodes.length === 0) {
+        selectedNodeId = null;
+      }
+
+      renderAxisFilters();
+      renderYearFilters();
+      renderMarkers();
+      renderSelectedNodeDetail();
+      renderNodesList();
+
+      if (selectedNodeId && markersMap[selectedNodeId]) {
+        const activeNode = filteredNodes.find(n => n.id === selectedNodeId);
+        map.flyTo(activeNode.coords, 12, { duration: 0.8 });
+      }
+    }
+
+    function resetAllFilters() {
+      activeAxis = 'todos';
+      activeYear = 'todos';
+      selectedNodeId = 'portal-resistencia';
+      applyFilters();
+      centerBogotaView();
+    }
+
+    function centerBogotaView() {
+      map.flyTo(BOGOTA_CENTER, BOGOTA_ZOOM, { duration: 0.9 });
+    }
+
+    function toggleFlowLines(show) {
+      if (show) {
+        flowLinesLayer.addTo(map);
+      } else {
+        map.removeLayer(flowLinesLayer);
+      }
+    }
+
+    function toggleSidebarMobile(forceState) {
+      const sidebar = document.getElementById('editorialSidebar');
+      const iconOpen = document.getElementById('iconOpenSidebar');
+      const iconClose = document.getElementById('iconCloseSidebar');
+      const label = document.getElementById('mobileDrawerLabel');
+
+      isMobileSidebarOpen = typeof forceState === 'boolean' ? forceState : !isMobileSidebarOpen;
+
+      if (isMobileSidebarOpen) {
+        sidebar.classList.remove('-translate-x-full');
+        sidebar.classList.add('translate-x-0');
+        iconOpen.classList.add('hidden');
+        iconClose.classList.remove('hidden');
+        label.textContent = 'Ver Mapa Vial';
+      } else {
+        sidebar.classList.remove('translate-x-0');
+        sidebar.classList.add('-translate-x-full');
+        iconOpen.classList.remove('hidden');
+        iconClose.classList.add('hidden');
+        label.textContent = 'Panel y Filtros';
+      }
+
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 320);
+    }
+
+    function toggleModalDossier() {
+      const modal = document.getElementById('modalDossier');
+      if (modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      } else {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    // =========================================================================
+    // 8. INICIALIZACIÓN AL CARGAR Y RECALCULO DE TAMAÑO DEL MAPA
+    // =========================================================================
+    window.addEventListener('resize', () => {
+      map.invalidateSize();
+    });
+
+    window.onload = function () {
+      renderAxisFilters();
+      renderYearFilters();
+      renderMarkers();
+      renderSelectedNodeDetail();
+      renderNodesList();
+
+      // Garantizar renderizado completo de Esri World Street Map sin recortes
+      map.invalidateSize();
+      setTimeout(() => {
+        map.invalidateSize();
+        if (markersMap[selectedNodeId]) {
+          markersMap[selectedNodeId].openPopup();
+        }
+      }, 250);
+    };
+  </script>
+</body>
+</html>
